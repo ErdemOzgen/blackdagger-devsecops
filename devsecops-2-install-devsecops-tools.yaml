@@ -1,0 +1,184 @@
+steps:
+  - name: gitleaks
+    command: docker pull zricethezav/gitleaks:latest
+    description: "Gitleaks is a SAST tool for detecting hardcoded secrets like passwords, api keys, and tokens in git repos. https://github.com/gitleaks/gitleaks"
+
+  - name: git-hound
+    command: git clone https://github.com/tillson/git-hound.git && cd git-hound && go build .
+    description: "Git Hound makes it easy to find exposed API keys on GitHub using pattern matching, targetted querying, and a scoring system. https://github.com/tillson/git-hound.git"
+    depends:
+    - gitleaks
+
+  - name: truffleHog
+    command: bash
+    script: |
+      cd /tmp && git clone https://github.com/trufflesecurity/trufflehog.git
+      cd trufflehog; go install
+    description: "Searches through git repositories for secrets, digging deep into commit history and branches. This is effective at finding secrets accidentally committed. https://github.com/trufflesecurity/trufflehog/tree/main"
+    depends:
+    - git-hound
+
+  - name: detect-secrets
+    command: pip install detect-secrets
+    description: "An enterprise friendly way of detecting and preventing secrets in code. https://github.com/Yelp/detect-secrets"
+    depends:
+    - truffleHog
+  
+  - name: ggshield
+    command: pip install --user -U ggshield && export PATH=$PATH:$HOME/.local/bin
+    description: "ggshield is a secrets scanner for commits, branches, pull requests and more. It runs locally and integrates with GitHub, GitLab and BitBucket. https://github.com/gitguardian/ggshield"
+    depends:
+    - detect-secrets
+
+  - name: cdxgen
+    command: sudo npm install -g @cyclonedx/cdxgen
+    description: "CycloneDX is a lightweight software bill-of-material (SBOM) standard designed for use in application security contexts and supply chain component analysis. https://github.com/CycloneDX/cdxgen"
+    depends:
+    - ggshield
+
+  - name: syft
+    command: bash
+    script: cd /tmp && curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
+    description: "Syft is a tool for generating a Software Bill of Materials (SBOM) from container images and filesystems. https://github.com/anchore/syft"
+    depends:
+    - cdxgen
+  
+  - name: retire.js
+    command: sudo npm install -g retire
+    description: "Scanner detecting the use of JavaScript libraries with known vulnerabilities. https://github.com/retirejs/retire.js/"
+    depends:
+    - syft
+
+  - name: jshint
+    command: sudo npm install -g jshint
+    description: "JSHint is a community-driven tool that detects errors and potential problems in JavaScript code. https://github.com/jshint/jshint"
+    depends:
+    - retire.js
+
+  - name: local-php-security-checker
+    command: go install github.com/fabpot/local-php-security-checker@latest
+    description: "PHP security vulnerabilities checker. https://github.com/fabpot/local-php-security-checker"
+    depends:
+    - jshint
+
+  - name: npm-check
+    command: sudo npm install -g npm-check
+    description: "Check for outdated, incorrect, and unused dependencies. https://www.npmjs.com/package/npm-check"
+    depends:
+    - local-php-security-checker
+
+  - name: brakeman
+    command: sudo gem install brakeman
+    description: "A static analysis security vulnerability scanner for Ruby on Rails applications. https://github.com/presidentbeef/brakeman"
+    depends:
+    - npm-check
+      
+  - name: semgrep
+    command: pip install semgrep #docker pull returntocorp/semgrep:latest
+    description: "Semgrep is a fast, open-source, static analysis tool for finding bugs and enforcing code standards at editor, commit, and CI time. https://github.com/semgrep/semgrep"
+    depends:
+    - brakeman
+
+  - name: libsast
+    command: pip install libsast
+    description: "A CLI tool to scan your JavaScript libraries for known vulnerabilities. https://github.com/ajinabraham/libsast"
+    depends:
+    - semgrep
+
+  - name: sonarqube
+    command: docker pull sonarqube:latest 
+    description: "SonarQube is an open-source platform for continuous inspection of code quality. https://github.com/SonarSource/sonarqube"
+    depends:
+    - libsast
+
+  - name: gosec
+    command: bash
+    script: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.18.2
+    description: "Golang security checker. https://github.com/securego/gosec"
+    depends:
+    - sonarqube
+
+  - name: safety
+    command: pip install safety
+    description: "Safety checks your installed dependencies for known security vulnerabilities. https://github.com/pyupio/safety"
+    depends:
+    - gosec
+
+  - name: dependency-check
+    command: bash
+    script: |
+      wget https://github.com/jeremylong/DependencyCheck/releases/download/v9.0.7/dependency-check-9.0.7-release.zip &&
+      unzip dependency-check-9.0.7-release.zip
+    description: "OWASP dependency-check-cli is an command line tool that uses dependency-check-core to detect publicly disclosed vulnerabilities associated with the scanned project dependencies. https://github.com/jeremylong/DependencyCheck"
+    depends:
+    - safety
+  
+  - name: zap-proxy
+    command: sudo snap install zaproxy --classic
+    description: "The OWASP Zed Attack Proxy (ZAP) is one of the world’s most popular free security tools and is actively maintained by hundreds of international volunteers. https://www.zaproxy.org/download/"
+    depends:
+    - dependency-check
+
+  - name: wapiti
+    command: bash
+    script: git clone https://github.com/wapiti-scanner/wapiti.git && cd wapiti && make install
+    description: "Wapiti allows you to audit the security of your web applications."
+    depends:
+    - zap-proxy
+
+  - name: nuclei
+    command: go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+    description: "Nuclei is used to send requests across targets based on a template leading to zero false positives and providing effective scanning for known paths. https://github.com/projectdiscovery/nuclei"
+    depends:
+    - wapiti
+
+  - name: grype
+    command: bash
+    script: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sudo sh -s -- -b /usr/local/bin
+    description: "Grype is a vulnerability scanner for container images and filesystems. https://github.com/anchore/grype"
+    depends:
+    - nuclei
+  
+  - name: bandit
+    command: pip install bandit
+    description: "Bandit is a tool designed to find common security issues in Python code. https://github.com/PyCQA/bandit"
+    depends:
+    - grype
+
+  - name: pyarmor
+    command: pip install pyarmor
+    description: "Pyarmor is a command-line tool designed for obfuscating Python scripts, binding obfuscated scripts to specific machines, and setting expiration dates for obfuscated scripts. https://github.com/dashingsoft/pyarmor"
+    depends:
+    - bandit
+  
+  - name: mythril
+    command: pip install mythril
+    description: "Mythril is a security analysis tool for EVM bytecode. It detects security vulnerabilities in smart contracts built for Ethereum, Hedera, Quorum, Vechain, Roostock, Tron and other EVM-compatible blockchains. https://github.com/ConsenSys/mythril"
+    depends:
+    - pyarmor
+
+  - name: slither-analyzer
+    command: pip install slither-analyzer
+    description: "Slither is a Solidity & Vyper static analysis framework written in Python3. It runs a suite of vulnerability detectors, prints visual information about contract details, and provides an API to easily write custom analyses. "
+    depends:
+    - mythril
+
+  - name: terraform
+    command: bash
+    script: |
+      sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+      wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+      echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+      sudo apt update
+      sudo apt-get install terraform
+    description: "Terraform is an infrastructure as code tool that lets you build, change, and version infrastructure safely and efficiently. https://www.terraform.io/"
+    depends:
+    - slither-analyzer
+
+  - name: checkov
+    command: pip3 install checkov
+    description: "Checkov is a static code analysis tool for scanning infrastructure as code (IaC) files for misconfigurations that may lead to security or compliance problems. https://github.com/bridgecrewio/checkov"
+    depends:
+    - terraform
+
+
