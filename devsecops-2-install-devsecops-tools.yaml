@@ -4,7 +4,12 @@ steps:
     description: "Gitleaks is a SAST tool for detecting hardcoded secrets like passwords, api keys, and tokens in git repos. https://github.com/gitleaks/gitleaks"
 
   - name: git-hound
-    command: git clone https://github.com/tillson/git-hound.git && cd git-hound && go build .
+    command: bash
+    script: |
+      git clone https://github.com/tillson/git-hound.git && cd git-hound && go build .
+      echo "This step cloned and built git-hound and created a binary under ~/.blackdagger/git-hound. Before running it it is important that you should configure git-hound binary."
+      echo "There is a config.example.yml file under the mentioned directory. You should modify and rename it to config.yml. After that, you can use git-hound successfully."
+      echo "For more information: https://github.com/tillson/git-hound
     description: "Git Hound makes it easy to find exposed API keys on GitHub using pattern matching, targetted querying, and a scoring system. https://github.com/tillson/git-hound.git"
     depends:
     - gitleaks
@@ -121,11 +126,15 @@ steps:
 
   - name: wapiti
     command: bash
-    script: git clone https://github.com/wapiti-scanner/wapiti.git && cd wapiti && make install
+     script: |
+      wget https://github.com/wapiti-scanner/wapiti/releases/download/3.1.7/wapiti3-3.1.7.tar.gz
+      tar -xzvf wapiti3-3.1.7.tar.gz
+      cd wapiti3-3.1.7 && pip install .
+      cd .. && rm -rf wapiti*
     description: "Wapiti allows you to audit the security of your web applications."
     depends:
     - zap-proxy
-
+   
   - name: nuclei
     command: go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
     description: "Nuclei is used to send requests across targets based on a template leading to zero false positives and providing effective scanning for known paths. https://github.com/projectdiscovery/nuclei"
