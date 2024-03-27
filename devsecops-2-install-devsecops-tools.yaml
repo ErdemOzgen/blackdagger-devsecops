@@ -121,11 +121,15 @@ steps:
 
   - name: wapiti
     command: bash
-    script: git clone https://github.com/wapiti-scanner/wapiti.git && cd wapiti && make install
+     script: |
+      wget https://github.com/wapiti-scanner/wapiti/releases/download/3.1.7/wapiti3-3.1.7.tar.gz
+      tar -xzvf wapiti3-3.1.7.tar.gz
+      cd wapiti3-3.1.7 && pip install .
+      cd .. && rm -rf wapiti*
     description: "Wapiti allows you to audit the security of your web applications."
     depends:
     - zap-proxy
-
+   
   - name: nuclei
     command: go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
     description: "Nuclei is used to send requests across targets based on a template leading to zero false positives and providing effective scanning for known paths. https://github.com/projectdiscovery/nuclei"
