@@ -11,6 +11,8 @@ steps:
       echo "There is a config.example.yml file under the mentioned directory. You should modify and rename it to config.yml. After that, you can use git-hound successfully."
       echo "For more information: https://github.com/tillson/git-hound
     description: "Git Hound makes it easy to find exposed API keys on GitHub using pattern matching, targetted querying, and a scoring system. https://github.com/tillson/git-hound.git"
+    depends:
+    - gitleaks
 
   - name: truffleHog
     command: bash
