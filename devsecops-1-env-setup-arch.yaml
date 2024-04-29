@@ -1,0 +1,92 @@
+# Arch-based version of devsecops-1-environment-setup.yaml
+steps:
+  - name: Install Docker
+    command: bash
+    script: |
+      if ! command -v docker &> /dev/null
+      then
+          echo "Docker not found, installing..."
+          sudo pacman -S docker --noconfirm 
+          sudo systemctl start docker.service
+          sudo systemctl enable docker.service
+          sudo usermod -aG docker $USER
+          newgrp docker
+          echo "Docker installation complete."
+      else
+          echo "Docker is already installed."
+      fi
+
+  - name: Install Go
+    command: bash
+    script: |
+      if ! command -v go &> /dev/null
+      then
+          echo "Go not found, installing..."
+          sudo pacman -S go --noconfirm
+          echo "Go installation complete."
+      else
+          echo "Go is already installed."
+      fi
+    depends:
+      - Install Docker
+  - name: Install Java and Maven
+    command: bash
+    script: |
+      if ! command -v java &> /dev/null
+      then
+          echo "Java not found, installing..."
+          sudo pacman -S jdk-openjdk --noconfirm
+          echo "Java installation complete."
+      else
+          echo "Java is already installed."
+      fi
+
+      if ! command -v mvn &> /dev/null
+      then
+          echo "Maven not found, installing..."
+          sudo pacman -S maven --noconfirm
+          echo "Maven installation complete."
+      else
+          echo "Maven is already installed."
+      fi
+      
+    depends:
+      - Install Go
+  - name: Install Node.js and npm
+    command: bash
+    script: |
+      if ! command -v node &> /dev/null
+      then
+          echo "Node.js not found, installing..."
+          sudo pacman -S nodejs-lts-iron --noconfirm
+          echo "Node.js v20 installation complete."
+      else
+          echo "Node.js is already installed."
+      fi
+
+      if ! command -v npm &> /dev/null
+      then
+          echo "npm not found, installing..."
+          sudo pacman -S npm --noconfirm
+          echo "npm installation complete."
+      else
+          echo "npm is already installed."
+      fi
+    depends:
+      - Install Java and Maven
+
+  - name: Install Ruby
+    command: bash
+    script: |
+      if ! command -v ruby &> /dev/null
+      then
+          echo "Ruby not found, installing..."
+          sudo pacman -S ruby --noconfirm
+          echo "Ruby installation complete."
+      else
+          echo "Ruby is already installed."
+      fi
+    depends:
+      - Install Node.js and npm
+  
+
