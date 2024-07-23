@@ -1,4 +1,3 @@
-params: scan_directory=CHANGEME token=CHANGEME project_key=CHANGEME url=http://localhost:9000
 steps:
   - name: "SAST Scan with SonarQube for JS, TS, Go, Python, PHP, ..."
     command: bash

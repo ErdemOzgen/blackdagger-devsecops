@@ -1,4 +1,4 @@
-params: scan_directory=CHANGEME output_directory=CHANGEME
+params: scan_directory=CHANGEME token=CHANGEME project_key=CHANGEME url=CHANGEME output_directory=CHANGEME
 steps:
   - name: Secret Scan with detect-secrets
     command: detect-secrets -C ${scan_directory} scan
@@ -11,7 +11,7 @@ steps:
 
   - name: Vulnerability Scan with JSHint
     command: bash
-    script: jshint ${scan_directory} || exit 0
+    script: sudo jshint ${scan_directory} || exit 0
     stdout: ${output_directory}/jshint.txt
     depends:
     - Vulnerability Scan with Grype
@@ -22,7 +22,7 @@ steps:
     - Vulnerability Scan with JSHint
 
   - name: Dependency Scan with OWASP Dependency Check
-    command: dependency-check/bin/dependency-check.sh --scan \"${scan_directory}\" --out ${output_directory}
+    command: dependency-check --scan \"${scan_directory}\" --out ${output_directory}
     depends:
     - Dependency Scan with Retire.js
 
@@ -37,16 +37,19 @@ steps:
   # After the configuration on SonarQube, you must add the required parameters below to perform your scan.
   # Also, you must use a SonarScanner CLI instance. Command below will run the container image of the instance.
   # You can see the scan results on SonarQube UI.
-  - name: "SAST Scan with SonarQube"
-    command: bash
-    script: |
-      docker run \
-      --rm \
-      --network=host \
-      -e SONAR_HOST_URL="http://localhost:9000" \
-      -e SONAR_SCANNER_OPTS="-Dsonar.projectKey=js" \
-      -e SONAR_TOKEN="sqp_31d3b30e1d7074b8d1951d315651edf8b6cb4047" \
-      -v "${scan_directory//\"}:/usr/src" \
-      sonarsource/sonar-scanner-cli
-    depends:
+  - name: SAST Scan with SonarQube
+    run: devsecops-atomic-sonarqube-other.yaml
+    params: scan_directory=$scan_directory token=$token project_key=$project_key url=$url
+    depends: 
+    - SBOM Generation With Syft
+
+
+  # This step is an alternative to one above.
+  # This step uses Snyk tool to conduct a SAST scan.
+  # Before running this step, make sure that you have a Snyk account and Snyk CLI installed in your device,
+  # run `snyk auth` command and enable Snyk Code in your Snyk account.
+  - name: SAST Scan with Snyk
+    run: devsecops-atomic-snyk.yaml
+    params: scan_directory=${scan_directory} output_directory=${output_directory}    
+    depends: 
     - SBOM Generation With Syft

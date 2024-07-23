@@ -1,0 +1,11 @@
+steps:
+  - name: SAST Scan with Snyk - Snyk Open Source
+    command: bash
+    script: snyk test --json > ${output_directory//\"}/snyk_open_source.json || true
+    dir: $scan_directory
+  - name: SAST Scan with Snyk - Snyk Code
+    command: bash
+    script: snyk code test --json > ${output_directory//\"}/snyk_code.json || true
+    dir: $scan_directory
+    depends:
+      - SAST Scan with Snyk - Snyk Open Source 
