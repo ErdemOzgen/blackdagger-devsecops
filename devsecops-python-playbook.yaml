@@ -1,11 +1,12 @@
-params: scan_directory=CHANGEME output_directory=CHANGEME
+params: scan_directory=CHANGEME token=CHANGEME project_key=CHANGEME url=CHANGEME output_directory=CHANGEME
 steps:
   - name: Secret Scan with detect-secrets
     command: detect-secrets -C ${scan_directory} scan
     stdout: ${output_directory}/secrets.json
 
   - name: Vulnerability Scan with Bandit
-    command: bandit --exit-zero -r ${scan_directory} -f json -o ${output_directory}/bandit_result.json
+    command: bash
+    script: bandit -r -f json -o ${output_directory//\"}/bandit_result.json ${scan_directory} || true
     depends:
     - Secret Scan with detect-secrets
 
@@ -14,13 +15,15 @@ steps:
     depends:
     - Vulnerability Scan with Bandit
 
+  # Safety tool now requires an account in their platform.
+  # Run `safety auth login` command to login or register before running this step.
   - name: Dependency Scan with Safety
     command: safety check --continue-on-error --save-json ${output_directory}/safety.json
     depends:
     - Vulnerability Scan with Grype
 
   - name: Dependency Scan with OWASP Dependency Check
-    command: dependency-check/bin/dependency-check.sh --scan \"${scan_directory}\" --out ${output_directory}
+    command: dependency-check --scan \"${scan_directory}\" --out ${output_directory}
     depends:
     - Dependency Scan with Safety
 
@@ -37,15 +40,18 @@ steps:
   # This step and its commands are specified for Python projects.
   # You can see the scan results on SonarQube UI.
   - name: SAST Scan with SonarQube
-    command: bash
-    script: |
-      docker run \
-      --rm \
-      --network=host \
-      -e SONAR_HOST_URL="http://localhost:9000" \
-      -e SONAR_SCANNER_OPTS="-Dsonar.projectKey=python" \
-      -e SONAR_TOKEN="sqp_f48949e4689b0dece50d97eb117a44eb600c925a" \
-      -v "${scan_directory//\"}:/usr/src" \
-      sonarsource/sonar-scanner-cli
+    run: devsecops-atomic-sonarqube-other.yaml
+    params: scan_directory=$scan_directory token=$token project_key=$project_key url=$url
+    depends: 
+    - SBOM Generation With Syft
+
+
+  # This step is an alternative to one above.
+  # This step uses Snyk tool to conduct a SAST scan.
+  # Before running this step, make sure that you have a Snyk account and Snyk CLI installed in your device,
+  # run `snyk auth` command and enable Snyk Code in your Snyk account.
+  - name: SAST Scan with Snyk
+    run: devsecops-atomic-snyk.yaml
+    params: scan_directory=${scan_directory} output_directory=${output_directory}    
     depends: 
     - SBOM Generation With Syft
