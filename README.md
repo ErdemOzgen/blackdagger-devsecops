@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="./assets/images/yamls.png" width="300" alt="yamls-logo">
+  <img src="./assets/images/blackdagger.png" width="300" alt="blackdagger-logo">
+</p>
+
 # Blackdagger DevSecOps YAML Files
 This repository consists of YAML files that are created to be used in [Blackdagger](https://github.com/ErdemOzgen/blackdagger) tool.
 With these YAML files, we aim to provide you a quick start to perform common DevSecOps tasks, show you the format and mechanisms of Blackdagger YAML files and give you inspiration and ideas to modify these files or create new ones for your DevSecOps needs. You can find the descriptions of each step in the YAML files. 
