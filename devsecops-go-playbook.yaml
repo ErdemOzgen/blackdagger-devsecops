@@ -3,31 +3,28 @@ steps:
   - name: Secret Scan with detect-secrets
     command: detect-secrets -C ${scan_directory} scan
     stdout: ${output_directory}/secrets.json
-
+  - name: Vulnerability Scan with Gosec
+    dir: $scan_directory
+    command: gosec -no-fail ./...
+    stdout: ${output_directory}/gosec.txt
+    depends:
+      - Secret Scan with detect-secrets
   - name: Vulnerability Scan with Grype
     command: sudo grype dir:${scan_directory} -o json --file ${output_directory}/grype.json
     depends:
-    - Secret Scan with detect-secrets
-
-  - name: Vulnerability Scan with JSHint
+    - Vulnerability Scan with Gosec
+  - name: Dependency Check with Govulncheck
+    dir: $scan_directory
     command: bash
-    script: sudo jshint ${scan_directory} || exit 0
-    stdout: ${output_directory}/jshint.txt
+    script: govulncheck -show verbose ./... > ${output_directory//\"}/govulncheck.txt || true
     depends:
-    - Vulnerability Scan with Grype
-
-  - name: Dependency Scan with Retire.js
-    command: retire --path ${scan_directory} --outputformat json --outputpath ${output_directory}/retire.js --exitwith 0
-    depends:
-    - Vulnerability Scan with JSHint
-
+      - Vulnerability Scan with Grype
   - name: Dependency Scan with OWASP Dependency Check
     command: dependency-check --scan \"${scan_directory}\" --out ${output_directory}
     depends:
-    - Dependency Scan with Retire.js
-
-  - name: "SBOM Generation With Syft"
-    command: syft ${scan_directory} --output cyclonedx-json
+    - Dependency Check with Govulncheck
+  - name: SBOM Generation With Syft
+    command: syft ${scan_directory} --output cyclonedx-json 
     stdout: ${output_directory}/sbom.json
     depends:
     - Dependency Scan with OWASP Dependency Check
@@ -36,6 +33,7 @@ steps:
   # 
   # After the configuration on SonarQube, you must add the required parameters below to perform your scan.
   # Also, you must use a SonarScanner CLI instance. Command below will run the container image of the instance.
+  # This step and its commands are specified for Python projects.
   # You can see the scan results on SonarQube UI.
   - name: SAST Scan with SonarQube
     run: devsecops-atomic-sonarqube-other.yaml

@@ -1,0 +1,9 @@
+steps:
+  - name: "SAST Scan with SonarQube for Maven"
+    dir: ${scan_directory}
+    command: bash
+    script: |
+      mvn clean verify sonar:sonar \
+        -Dsonar.projectKey=${project_key//\"} \
+        -Dsonar.host.url=${url//\"}\
+        -Dsonar.token=${token//\"}

@@ -1,0 +1,12 @@
+steps:
+  - name: "SAST Scan with SonarQube for JS, TS, Go, Python, PHP, ..."
+    command: bash
+    script: |
+      docker run \
+      --rm \
+      --network=host \
+      -e SONAR_HOST_URL="${url//\"}" \
+      -e SONAR_SCANNER_OPTS="-Dsonar.projectKey=${project_key//\"}" \
+      -e SONAR_TOKEN="${token//\"}" \
+      -v "${scan_directory//\"}:/usr/src" \
+      sonarsource/sonar-scanner-cli
